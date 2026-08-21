@@ -103,6 +103,9 @@ raté transforme le jeu en réveil-matin.
 | `pourquoi` | **oui** | pourquoi ce son existe et pourquoi il sonne comme ça. Reprise telle quelle dans `SonsConfig.lua` et dans la carte |
 | `declencheurs` | **oui** | au moins un, sinon personne ne joue ce son |
 | `boucle` | non | `true` pour une ambiance qui tourne (le lecteur ne gère pas les boucles : voir `moteur.md`) |
+| `famille` | pour un manquant | le **registre de recherche** (`Bois & objet posé`, `Magie`…). C'est ce qui groupe la liste de chasse : on tape un mot une fois et on remplit quatre lignes d'un coup, au lieu de changer de registre à chaque son |
+| `veut` | pour un manquant | **ce qu'on veut entendre**, en une phrase, en français. Le `cherche` donne les mots à taper ; celui-ci dit à quoi reconnaître le bon quand on l'entend |
+| `evite` | non | le piège connu pour ce son — ce qui remonte en tête des résultats et qui ne convient pas |
 | `rejetes` | non | assets **écartés**, `[{ id, pourquoi }]`. À remplir chaque fois qu'on retire un id : sans ça, un asset rejeté pour cause de niveau impossible ressort en tête du Toolbox à la recherche suivante, et on refait la même erreur six mois plus tard. Repris en encadré dans la liste de courses |
 
 ### Champs d'un déclencheur
@@ -164,6 +167,22 @@ c'est la liste qu'on emmène dans le Toolbox, et l'ordre par échelon évite d'a
 chercher vingt fois de suite dans des registres différents.
 
 ---
+
+## 3 bis. `audio/A-TROUVER.md` — la liste de chasse
+
+Généré lui aussi, et **séparé de la carte** parce qu'il ne sert pas au même
+moment : la carte dit où en est le son du jeu, la liste sert **pendant** qu'on
+cherche, avec une seule question par fiche — « est-ce que celui-là fait
+l'affaire ? ».
+
+Groupée par **famille de recherche**, pas par système de jeu : on cherche par
+registre sonore (`wood`, `chime`, `magic`), pas par mécanique. Chaque fiche
+porte le déclencheur, ce qu'on veut entendre, les mots à taper, le piège à
+éviter, la durée plafond, et une ligne vide pour l'id.
+
+Elle se termine par les sons **qui ne sont pas manquants mais attendent une
+décision** (jamais mesurés, ou hors de leur échelon) : sans ça, ils se perdent
+entre deux fichiers.
 
 ## 4. Ce que la carte n'est pas
 

@@ -227,6 +227,7 @@ ecrire(join(RACINE, "studio", "SonsConfig.lua"), sonsConfigLua());
 ecrire(join(RACINE, "docs", "AUDIO.md"), carteSonore());
 ecrire(join(RACINE, "audio", "console.html"), console_html());
 ecrire(join(RACINE, "audio", "banc.lua"), bancLua());
+ecrire(join(RACINE, "audio", "A-TROUVER.md"), listeDeChasse());
 // sons.json n'est réécrit QUE si des mesures sont arrivées. Un build sec ne
 // touche pas à la source de vérité : elle n'a rien appris, et la reformater à
 // chaque passe encombrerait le diff de bruit qui ne dit rien.
@@ -441,6 +442,118 @@ function carteSonore() {
         for (const rj of s.rejetes)
           L.push(`> **\`${nom}\` — ne pas reprendre l'asset \`${rj.id}\`.** ${rj.pourquoi}\n`);
     }
+  }
+  return L.join("\n") + "\n";
+}
+
+// LA LISTE DE CHASSE — le fichier qu'on emporte dans le Toolbox.
+//
+// Elle existe SEPAREMENT de la carte sonore parce qu'elle ne sert pas au meme
+// moment : la carte dit ou en est le son du jeu, la liste sert pendant qu'on
+// cherche, avec une seule question par ligne — « est-ce que celui-la fait
+// l'affaire ? ». Groupee par FAMILLE de recherche et non par systeme de jeu :
+// on tape « wood » une fois et on remplit quatre lignes d'un coup.
+function listeDeChasse() {
+  const manquants = Object.entries(SONS).filter(([n, s]) => !RESERVE(n) && !s.ids.length);
+  const L = [];
+  L.push("# Les sons à trouver");
+  L.push("");
+  L.push("<!-- FICHIER GÉNÉRÉ par HyperAudio depuis `audio/sons.json`. Toute correction va");
+  L.push("     dans le JSON — ce qui est écrit ici est perdu à la régénération.");
+  L.push("     node .claude/skills/hyperaudio/scripts/build.mjs audio/sons.json -->");
+  L.push("");
+  L.push(`**${manquants.length} sons.** Pour chacun : quand il se déclenche, ce qu'on veut`);
+  L.push("entendre, la durée à ne pas dépasser, les mots à taper — et une ligne vide pour");
+  L.push("noter l'id retenu.");
+  L.push("");
+  L.push("---");
+  L.push("");
+  L.push("## Où chercher");
+  L.push("");
+  L.push("Toolbox de Studio (onglet **Audio**), ou <https://create.roblox.com/store/audio>.");
+  L.push("");
+  L.push("**Trois règles qui vont à l'inverse de ce qu'on ferait spontanément** — mesurées");
+  L.push("le 21/08 sur ce jeu :");
+  L.push("");
+  L.push("| | |");
+  L.push("|---|---|");
+  L.push("| **Un ou deux mots, jamais une phrase** | `wood`, `crack`, `chime`. Une formulation bien tournée comme `paper money rustle` rend **zéro résultat** — l'index audio ne fait pas de recherche sémantique |");
+  L.push("| **Ne pas filtrer par durée ni par prix** | ces filtres **vident** les résultats au lieu de les affiner. On trie sur la durée après, à l'œil |");
+  L.push("| **Ratisser, puis trier** | trois ou quatre requêtes d'un mot autour de l'idée valent mieux qu'une requête précise |");
+  L.push("");
+  L.push("**Écoutez tout avant de retenir.** Le nom ment souvent : « Money Collect » peut");
+  L.push("être une pièce, un froissement de billet ou un jingle de jeu mobile.");
+  L.push("");
+  L.push("## Les deux critères qui éliminent le plus vite");
+  L.push("");
+  L.push("1. **La durée.** C'est ce qui rend un son insupportable, avant son timbre. Le");
+  L.push("   plafond est donné pour chaque son — il vient de la fréquence du geste : un");
+  L.push("   son joué cinquante fois par session ne peut pas durer deux secondes.");
+  L.push("2. **Le démarrage.** Beaucoup d'échantillons commencent par 50 à 200 ms de");
+  L.push("   silence. Sur un geste, ça se **sent** : le retour paraît mou, décalé. Si le son");
+  L.push("   ne démarre pas tout de suite quand vous l'écoutez, écartez-le.");
+  L.push("");
+  L.push("Ce qu'on ne regarde **pas** : le volume de l'enregistrement. Il est recalculé");
+  L.push("automatiquement (`references/mixage.md`).");
+  L.push("");
+  L.push("## Ce qu'il faut me renvoyer");
+  L.push("");
+  L.push("Une ligne par son, l'id suffit :");
+  L.push("");
+  L.push("```");
+  L.push("OeufPose = 9126267420");
+  L.push("OeufEclos = 9113959343");
+  L.push("```");
+  L.push("");
+  L.push("Plusieurs ids pour le même son = **variantes**, tirées au hasard à chaque lecture.");
+  L.push("C'est un plus pour tout ce qui se répète vite ; inutile ailleurs.");
+  L.push("");
+  L.push("Je m'occupe ensuite de vérifier qu'ils chargent dans l'univers, de les mesurer et");
+  L.push("de calculer leur volume.");
+  L.push("");
+  L.push("---");
+  L.push("");
+
+  const MAX = { texture: "0,5 s", geste: "0,6 s", reussite: "1,5 s", evenement: "3 s", fond: "—" };
+  const familles = [...new Set(manquants.map(([, s]) => s.famille || "Divers"))];
+  for (const fam of familles) {
+    const lot = manquants.filter(([, s]) => (s.famille || "Divers") === fam);
+    L.push(`## ${fam}`);
+    L.push("");
+    for (const [nom, s] of lot) {
+      const d = (s.declencheurs || [])[0] || {};
+      L.push(`### \`${nom}\``);
+      L.push("");
+      L.push(`**Quand** — ${d.sujet} ${d.geste}, ${d.condition}.`);
+      L.push("");
+      L.push(`**Ce qu'on veut entendre** — ${s.veut || ""}`);
+      L.push("");
+      L.push(`**À taper** — ${(s.cherche || "").split(",").map((t) => "`" + t.trim() + "`").join(" · ")}`);
+      L.push("");
+      if (s.evite) L.push(`**À éviter** — ${s.evite}`);
+      if (s.evite) L.push("");
+      L.push(`**Durée max** — ${MAX[s.echelon] || "?"} (échelon \`${s.echelon}\`)`);
+      L.push("");
+      L.push("**id trouvé** : ` `");
+      L.push("");
+    }
+  }
+
+  // Ce qui n'est pas « manquant » mais attend quand meme une decision : le dire
+  // ici evite qu'il se perde entre deux fichiers.
+  const enAttente = Object.entries(SONS).filter(([n, s]) => !RESERVE(n) && s.ids.length && (s.etat === "devine" || s.etat === "regler"));
+  if (enAttente.length) {
+    L.push("---");
+    L.push("");
+    L.push("## Pas manquants, mais en attente");
+    L.push("");
+    for (const [nom, s] of enAttente) {
+      const quoi = s.etat === "devine"
+        ? "asset en place mais **jamais mesuré** — le volume est une opinion tant que le banc n'a pas tourné"
+        : `**hors de son échelon** de ${s.ecartDb > 0 ? "+" : ""}${s.ecartDb} dB`;
+      L.push(`- \`${nom}\` (${s.ids.join(", ")}) — ${quoi}.`);
+    }
+    L.push("");
   }
   return L.join("\n") + "\n";
 }
