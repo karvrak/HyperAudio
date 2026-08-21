@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Écoute des candidats — HyperAudio</title>
+<!--
+  FICHIER GÉNÉRÉ par HyperAudio (scripts/audition.mjs). Ne pas l'éditer.
+
+  À QUOI SERT CETTE PAGE. À trancher vite. Les candidats sont déjà triés : ce qui
+  respecte les critères de durée et d'attaque de son échelon est en tête, ce qui
+  les rate est relégué avec la raison écrite. On écoute donc du plus probable au
+  moins probable, et on s'arrête dès que c'est bon — au lieu d'écouter vingt
+  extraits au hasard.
+
+  Le choix est retenu dans le navigateur (localStorage) : on peut fermer la page
+  et y revenir. Le bouton du haut recopie la sélection en une ligne par son.
+-->
+<style>
+  :root{
+    --fond:#12160f; --panneau:#1b2117; --bord:#2c3626; --texte:#e8f0e0;
+    --doux:#94a888; --ok:#5dbb63; --reserve:#e0a33e; --hors:#8a6a5a; --prive:#7f96c9;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fond);color:var(--texte);
+       font:14px/1.55 "Segoe UI",system-ui,sans-serif;padding:26px 30px 80px;max-width:1080px}
+  h1{font-size:21px;margin:0 0 6px}
+  .chapeau{color:var(--doux);margin:0 0 20px;max-width:70ch}
+  .barre{position:sticky;top:0;z-index:5;background:var(--fond);padding:10px 0 12px;
+         border-bottom:1px solid var(--bord);margin-bottom:22px;display:flex;gap:12px;align-items:center}
+  button{background:var(--panneau);color:var(--texte);border:1px solid var(--bord);
+         border-radius:7px;padding:7px 14px;font:inherit;cursor:pointer}
+  button:hover{border-color:var(--ok)}
+  #compte{color:var(--doux)}
+  section{margin:0 0 30px;border:1px solid var(--bord);border-radius:10px;overflow:hidden}
+  .tete{background:var(--panneau);padding:12px 16px}
+  .tete h2{font-size:16px;margin:0;font-family:ui-monospace,Consolas,monospace}
+  .tete .ech{float:right;color:var(--doux);font-size:12px;text-transform:uppercase;letter-spacing:.07em}
+  .tete p{margin:6px 0 0;color:var(--doux);font-size:13px;max-width:80ch}
+  .cand{display:grid;grid-template-columns:26px 1fr 306px;gap:12px;align-items:center;
+        padding:10px 16px;border-top:1px solid var(--bord)}
+  .cand.r2,.cand.r3{opacity:.5}
+  .nom{font-size:13px}
+  .nom b{font-weight:600}
+  .meta{color:var(--doux);font-size:12px;font-family:ui-monospace,Consolas,monospace}
+  .pastille{display:inline-block;padding:1px 7px;border-radius:99px;font-size:11px;
+            border:1px solid;margin-left:7px;vertical-align:1px}
+  .r0 .pastille{color:var(--ok);border-color:var(--ok)}
+  .r1 .pastille{color:var(--reserve);border-color:var(--reserve)}
+  .r2 .pastille,.r3 .pastille{color:var(--hors);border-color:var(--hors)}
+  .cand.prive .pastille{color:var(--prive);border-color:var(--prive)}
+  audio{width:300px;height:34px}
+  .deux{display:flex;align-items:center;gap:7px;margin:1px 0}
+  .deux span{font-size:10px;color:var(--doux);width:48px;text-align:right;flex:none}
+  .deux audio{width:246px;height:30px}
+  a{color:var(--prive)}
+  .lien{font-size:12px}
+  input[type=radio]{width:16px;height:16px;accent-color:var(--ok);cursor:pointer}
+  .cand.choisi{background:#5dbb6314}
+  #sortie{width:100%;min-height:120px;background:var(--panneau);color:var(--texte);
+          border:1px solid var(--bord);border-radius:8px;padding:12px;font-family:ui-monospace,Consolas,monospace;
+          font-size:12px;display:none;margin-top:10px}
+</style>
+</head>
+<body>
+<h1>Écoute des candidats</h1>
+<p class="chapeau" id="chapeau"></p>
+
+<div class="barre">
+  <button id="copier">Copier ma sélection</button>
+  <button id="vider">Tout désélectionner</button>
+  <span id="compte"></span>
+</div>
+<textarea id="sortie" readonly></textarea>
+
+<div id="corps"></div>
+
+<script>
+const D = /*DONNEES*/;
+
+const MOT = { 0:"recevable", 1:"réserve", 2:"hors critères", 3:"illisible" };
+const choix = JSON.parse(localStorage.getItem("hyperaudio-choix") || "{}");
+
+let nTotal = 0, nEcoutables = 0;
+for (const s of Object.values(D)) for (const c of s.candidats) { nTotal++; if (c.fichier) nEcoutables++; }
+document.getElementById("chapeau").innerHTML =
+  `${nTotal} candidats pour ${Object.keys(D).length} sons à combler, dont <b>${nEcoutables} écoutables ici même</b>.
+   Les autres sont des assets privés (Roblox les a fermés en 2022) : leur lien ouvre leur page, où Roblox
+   les joue. Dans chaque bloc, les candidats sont classés — ce qui respecte les critères de durée et
+   d'attaque de l'échelon est en tête. Cochez ce qui vous va, puis « Copier ma sélection ».
+   <br><br><b>Quand deux lecteurs sont affichés</b>, le premier est la version <b>retaillée</b> — silence de
+   début retiré, durée ramenée sous le plafond de l'échelon. C'est celle-là qu'il faut juger : c'est ce que
+   le jeu jouerait. Le second est le fichier d'origine, pour comparer. Une version retaillée doit être
+   <b>ré-uploadée sur Roblox</b> pour servir en jeu — l'id d'origine, lui, joue le fichier long.`;
+
+const corps = document.getElementById("corps");
+for (const [son, f] of Object.entries(D)) {
+  const sec = document.createElement("section");
+  const cible = { texture:"0,5 s", geste:"0,6 s", reussite:"1,5 s", evenement:"3 s", fond:"—" }[f.echelon];
+  sec.innerHTML = `<div class="tete">
+      <span class="ech">${f.echelon} · max ${cible}</span>
+      <h2>${son}</h2>
+      <p>${f.pourquoi || ""}</p>
+    </div>`;
+
+  for (const c of f.candidats) {
+    const d = document.createElement("div");
+    d.className = `cand r${c.verdict.rang}${c.prive ? " prive" : ""}`;
+    const mesures = c.fichier
+      ? `${c.duree.toFixed(2)} s · corps ${c.corpsDb ?? "?"} dBFS · attaque ${c.attaqueMs ?? "?"} ms`
+      : (c.dureeAnnoncee ? `${c.dureeAnnoncee} s annoncées` : "non mesuré");
+    d.innerHTML = `
+      <div><input type="radio" name="${son}" value="${c.id}" ${choix[son] === c.id ? "checked" : ""}></div>
+      <div>
+        <div class="nom"><b>${echapper(c.nom || c.id)}</b>
+          <span class="pastille">${MOT[c.verdict.rang]}</span></div>
+        <div class="meta">${c.id} · ${echapper(c.createur || "?")} · ${mesures}</div>
+        <div class="meta" style="color:#7b8f70">${echapper(c.verdict.pourquoi)}${c.categorie ? " · " + echapper(c.categorie) : ""}</div>
+      </div>
+      <div>${c.fichier
+        ? (c.retaille
+            ? `<div class="deux"><span>retaillé</span><audio controls preload="none" src="${c.retaille}"></audio></div>
+               <div class="deux"><span>original</span><audio controls preload="none" src="${c.fichier}"></audio></div>`
+            : `<audio controls preload="none" src="${c.fichier}"></audio>`)
+        : `<a class="lien" href="https://create.roblox.com/store/asset/${c.id}" target="_blank" rel="noopener">ouvrir sa page Roblox ↗</a>`}</div>`;
+    const radio = d.querySelector("input");
+    radio.addEventListener("change", () => {
+      choix[son] = c.id;
+      localStorage.setItem("hyperaudio-choix", JSON.stringify(choix));
+      peindre();
+    });
+    sec.appendChild(d);
+  }
+  corps.appendChild(sec);
+}
+
+function peindre() {
+  document.querySelectorAll(".cand").forEach(d => {
+    const r = d.querySelector("input");
+    d.classList.toggle("choisi", r && r.checked);
+  });
+  const n = Object.keys(choix).filter(k => choix[k]).length;
+  document.getElementById("compte").textContent = `${n} / ${Object.keys(D).length} choisis`;
+}
+peindre();
+
+document.getElementById("copier").addEventListener("click", () => {
+  const t = Object.entries(choix).filter(([, v]) => v)
+    .map(([son, id]) => {
+      const c = D[son].candidats.find(x => x.id === id);
+      return `${son} = ${id}   (${c ? c.nom : "?"})`;
+    }).join("\n") || "(rien de choisi)";
+  const z = document.getElementById("sortie");
+  z.style.display = "block";
+  z.value = t;
+  z.select();
+  try { document.execCommand("copy"); } catch {}
+});
+
+document.getElementById("vider").addEventListener("click", () => {
+  for (const k of Object.keys(choix)) delete choix[k];
+  localStorage.setItem("hyperaudio-choix", "{}");
+  document.querySelectorAll("input[type=radio]").forEach(r => r.checked = false);
+  document.getElementById("sortie").style.display = "none";
+  peindre();
+});
+
+function echapper(s) {
+  return String(s ?? "").replace(/[&<>"]/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[m]));
+}
+</script>
+</body>
+</html>

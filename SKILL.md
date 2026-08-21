@@ -115,6 +115,21 @@ C'est ce qui fait que la carte recense les trous au lieu de les taire.
 
 Schéma complet : `references/carte-sonore.md` § format.
 
+### 2 bis. Combler les trous — faire écouter avant de choisir
+
+Un son manquant (`ids: []`) a besoin d'un asset. On ne le choisit pas sur son nom :
+
+```bash
+node .claude/skills/hyperaudio/scripts/audition.mjs audio/candidats.json
+```
+
+Produit `audio/ecoute/ecoute.html` — un lecteur par candidat, groupés par son,
+triés recevables en tête, avec une **version retaillée** (silence de tête coupé,
+durée ramenée sous le plafond de l'échelon) à côté de chaque original. C'est la
+retaillée qu'on juge : elle seule ressemble à ce que le jeu jouerait.
+
+Détail, et les pièges du téléchargement : `references/sourcing.md` § 3 bis.
+
 ### 3. Générer, et traiter les avertissements
 
 ```bash

@@ -99,6 +99,13 @@ Les ids **récents** (15 chiffres) répondent `401 Authentication required` : il
 s'écoutent qu'en Studio. Ne pas construire de chaîne d'outil qui en dépende — le
 banc d'essai mesure dans Studio précisément pour cette raison.
 
+Proportion mesurée le 21/08, sur 98 candidats ramassés à la recherche : **55
+publics, 43 privés**. Chercher en priorité les ids **anciens** et les
+bibliothèques officielles (`ProSoundEffects`, `Roblox`) n'est donc pas un détail
+— c'est ce qui décide si on pourra faire écouter le résultat.
+
+`audition.mjs` (§ 3 bis) automatise tout ce paragraphe.
+
 ---
 
 ## 3. Choisir — les critères de rejet, dans l'ordre
@@ -116,8 +123,12 @@ banc d'essai mesure dans Studio précisément pour cette raison.
 **Le silence de tête ensuite.** Beaucoup d'échantillons du Toolbox commencent par
 50 à 200 ms de silence. Sur un son de geste, ce retard se **sent** : le clic
 paraît mou, désynchronisé de l'action. Ça se voit sur la mesure du banc (la
-loudness reste à 0 sur les premières images) et ça ne se rattrape pas — il faut
-un autre asset.
+loudness reste à 0 sur les premières images).
+
+Ce défaut-là **se répare** : `audition.mjs` coupe le silence et raccourcit le
+fichier (§ 3 bis). Mais la version corrigée doit être **ré-uploadée** pour servir
+en jeu — l'id d'origine, lui, joue toujours le fichier long. Tant qu'on garde
+l'id d'origine, le silence de tête reste un motif de rejet.
 
 **La queue de réverbération enfin.** Une réverbération longue sur un son répété
 s'accumule et transforme vingt gestes en soupe. Sur `texture` et `geste`, prendre
@@ -128,6 +139,50 @@ calcul (`mixage.md` § 5) — sauf s'il est si faible que le volume calculé dé
 1, ce que le générateur signale.
 
 ---
+
+## 3 bis. Faire écouter — `audition.mjs`
+
+Choisir un bruitage sur son NOM ne marche pas : « Money Collect » peut être une
+pièce, un froissement de billet ou un jingle de jeu mobile. Il faut l'entendre.
+
+```bash
+node .claude/skills/hyperaudio/scripts/audition.mjs audio/candidats.json
+```
+
+`candidats.json` liste, par son à combler, les ids ramassés à la recherche. L'outil
+récupère la fiche de chacun, tente de le **télécharger**, le **mesure** (mêmes
+grandeurs que le banc Studio : `corps` et attaque), le **retaille** si besoin, puis
+écrit `audio/ecoute/ecoute.html` : un lecteur par candidat, groupés par son,
+triés — recevables en tête —, avec un bouton qui recopie la sélection.
+
+### La retaille change ce qui est recevable
+
+Deux des trois défauts qui disqualifient un bruitage ne sont pas des défauts de
+l'échantillon, ce sont des défauts du **fichier** :
+
+| Défaut | Rattrapable ? |
+|---|---|
+| silence de tête | **oui** — on le coupe |
+| trop long | **oui** — on le raccourcit, avec un fondu de 30 ms |
+| enregistrement quasi muet | **non** — il faut un autre asset |
+
+L'outil produit donc une version retaillée à côté de l'originale, et c'est **elle**
+qui est jugée. Mesuré le 21/08 : sans la retaille, 9 des 18 sons n'avaient aucun
+candidat recevable ; avec, il n'en reste qu'un.
+
+**Une version retaillée doit être ré-uploadée sur Roblox pour servir en jeu** —
+l'id d'origine joue le fichier long. Tant qu'elle ne l'est pas, la retaille sert à
+juger, pas à livrer.
+
+### Deux pièges du téléchargement
+
+**`--compressed` sur curl est indispensable.** Le CDN sert ces fichiers avec
+`encoding=gzip` dans l'URL signée ; sans cet indicateur, curl écrit le flux gzip
+tel quel. Le fichier a la bonne taille, aucune erreur n'est levée, et ffmpeg ne le
+décode pas — le candidat passe pour privé alors qu'il était public.
+
+**Un 401 arrive avec un code HTTP 200 sur le fichier.** On teste la **signature du
+contenu** (`OggS`, `ID3`, `RIFF`), jamais le code de retour.
 
 ## 4. La bibliothèque partagée
 

@@ -62,6 +62,9 @@ audio/sons.json          ←  SOURCE DE VÉRITÉ : catalogue + échelons + décl
         └──→ audio/banc.lua     le banc, à lancer en Play pour MESURER
                                       ↓
                               audio/mesures.json  →  relancé dans sons.json
+
+audio/candidats.json     →  audio/ecoute/ecoute.html
+   (ids ramassés)            la page d'audition : un lecteur par candidat
 ```
 
 Quatre sorties depuis une seule source : elles **ne peuvent pas diverger**.
@@ -69,7 +72,22 @@ Quatre sorties depuis une seule source : elles **ne peuvent pas diverger**.
 ```bash
 node scripts/build.mjs audio/sons.json
 node scripts/build.mjs audio/sons.json --mesures audio/mesures.json
+node scripts/audition.mjs audio/candidats.json    # combler les trous
 ```
+
+### Combler les trous : `audition.mjs`
+
+Un bruitage ne se choisit pas sur son nom — « Money Collect » peut être une pièce,
+un froissement de billet ou un jingle de jeu mobile. L'outil prend une liste d'ids,
+récupère leur fiche, les **télécharge**, les **mesure**, les **retaille** au besoin,
+et écrit une page d'audition : un lecteur par candidat, groupés par son, triés
+recevables en tête.
+
+La retaille est ce qui change tout. Deux des trois défauts qui disqualifient un
+échantillon ne sont pas des défauts du son mais **du fichier** — un silence de tête
+se coupe, une durée excessive se raccourcit. Mesuré : sans elle, 9 des 18 sons
+n'avaient aucun candidat recevable ; avec, il n'en reste qu'un. (Une version
+retaillée doit être ré-uploadée sur Roblox pour servir en jeu.)
 
 ---
 
@@ -145,7 +163,7 @@ qui l'a fait naître ne se retient pas. Adaptez les noms, gardez les règles.
 | [`references/mixage.md`](references/mixage.md) | **les six échelons, le mètre étalon, le calcul du volume** — le cœur |
 | [`references/carte-sonore.md`](references/carte-sonore.md) | la méthode de recensement, le schéma de `sons.json`, le format de la carte |
 | [`references/moteur.md`](references/moteur.md) | le runtime Roblox, et les pièges qui font qu'un son ne sort pas |
-| [`references/sourcing.md`](references/sourcing.md) | trouver un asset, vérifier qu'il charge, la bibliothèque partagée |
+| [`references/sourcing.md`](references/sourcing.md) | trouver un asset, vérifier qu'il charge, le faire écouter, la bibliothèque partagée |
 
 ---
 
