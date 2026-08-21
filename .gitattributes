@@ -1,0 +1,8 @@
+# Tout en LF, y compris sur Windows. Le banc.lua est collé tel quel dans la barre
+# de commande de Roblox Studio, et les .mjs sont lus par Node : des CRLF glissés
+# à la sortie d'un clone Windows se voient tôt ou tard.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ttf binary

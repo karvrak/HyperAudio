@@ -1,0 +1,8 @@
+# Ce dépôt ne contient que le SKILL. Les sorties d'un projet qui l'utilise
+# (audio/sons.json, audio/mesures.json, les fichiers générés) vivent dans ce
+# projet, pas ici.
+audio/
+
+node_modules/
+.DS_Store
+Thumbs.db

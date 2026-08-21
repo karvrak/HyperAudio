@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Console de mixage — HyperAudio</title>
+<!--
+  FICHIER GÉNÉRÉ par HyperAudio depuis audio/sons.json. Ne pas l'éditer.
+
+  CE QU'ON REGARDE ICI. Une barre par son, posée sur une échelle en décibels dont
+  le zéro est l'échelon « reussite ». Le trait vertical est la CIBLE de l'échelon
+  du son ; la barre est son niveau MESURÉ × son volume. Un son hors de son
+  échelon se voit d'un coup d'œil — sans rien écouter, et sans avoir à comparer
+  deux sons de mémoire, ce dont l'oreille est incapable à plus de dix secondes
+  d'écart.
+
+  Le repère « pas » est le mètre étalon (mixage.md § 2). Aucune barre ne doit
+  l'écraser sans raison : c'est le son que le joueur entend en permanence.
+-->
+<style>
+  :root{
+    --fond:#12160f; --panneau:#1b2117; --bord:#2c3626; --texte:#e8f0e0;
+    --doux:#94a888; --grille:#2a331f;
+    --pose:#5dbb63; --regler:#e0a33e; --devine:#7f96c9; --manquant:#5a6553;
+    --etalon:#e05c5c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fond);color:var(--texte);
+       font:14px/1.5 "Segoe UI",system-ui,sans-serif;padding:28px 32px 60px}
+  h1{font-size:20px;margin:0 0 4px}
+  .chapeau{color:var(--doux);margin:0 0 22px;max-width:64ch}
+  .chapeau b{color:var(--texte)}
+  .compte{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 26px}
+  .puce{background:var(--panneau);border:1px solid var(--bord);border-radius:999px;
+        padding:4px 12px;font-size:13px}
+  .puce i{font-style:normal;display:inline-block;width:9px;height:9px;border-radius:50%;
+          margin-right:6px;vertical-align:middle}
+  h2{font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--doux);
+     margin:26px 0 10px;border-bottom:1px solid var(--bord);padding-bottom:6px}
+  h2 span{float:right;text-transform:none;letter-spacing:0;font-weight:400}
+  .ligne{display:grid;grid-template-columns:200px 1fr 132px;gap:14px;align-items:center;
+         padding:3px 0;cursor:pointer;border-radius:5px}
+  .ligne:hover{background:#ffffff09}
+  .nom{font-family:ui-monospace,Consolas,monospace;font-size:13px;
+       overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .piste{position:relative;height:20px;background:#0000002e;border-radius:3px;overflow:hidden}
+  .grad{position:absolute;top:0;bottom:0;width:1px;background:var(--grille)}
+  .grad.zero{background:#3f4c35}
+  .grad.pas{background:var(--etalon);opacity:.55;width:2px}
+  .barre{position:absolute;top:4px;height:12px;border-radius:2px;opacity:.92}
+  .cible{position:absolute;top:0;bottom:0;width:2px;background:var(--texte);opacity:.85}
+  .val{text-align:right;font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--doux)}
+  .val b{color:var(--texte);font-weight:600}
+  .fiche{grid-column:1/-1;display:none;background:var(--panneau);border:1px solid var(--bord);
+         border-left:3px solid var(--bord);border-radius:0 6px 6px 0;padding:10px 14px;
+         margin:2px 0 8px;color:var(--doux);font-size:13px}
+  .ligne.ouvert .fiche{display:block}
+  .fiche b{color:var(--texte)}
+  .fiche ul{margin:6px 0 0;padding-left:18px}
+  .echelle{display:grid;grid-template-columns:200px 1fr 132px;gap:14px;margin-bottom:2px}
+  .echelle div:nth-child(2){position:relative;height:16px}
+  .tick{position:absolute;font-size:11px;color:var(--doux);transform:translateX(-50%)}
+  .vide{color:var(--doux);font-style:italic;padding:6px 0}
+</style>
+</head>
+<body>
+<h1>Console de mixage</h1>
+<p class="chapeau" id="chapeau"></p>
+<div class="compte" id="compte"></div>
+<div id="corps"></div>
+
+<script>
+const D = /*DONNEES*/;
+
+const MIN_DB = -26, MAX_DB = 14;
+const COUL = { pose:"var(--pose)", regler:"var(--regler)", devine:"var(--devine)", manquant:"var(--manquant)", trouve:"var(--devine)" };
+const MOT  = { pose:"posé", regler:"à régler", devine:"deviné", manquant:"manquant", trouve:"trouvé" };
+
+// N0 = le niveau du 0 dB de l'échelle, reconstruit depuis l'étalon : le pas,
+// remonté de son propre échelon jusqu'à zéro. Sans étalon, pas d'échelle
+// absolue — on affiche alors les cibles seules, et on le dit.
+const dB = x => Math.pow(10, x/20);
+const E = D.etalon;
+const N0 = (E && E.corps > 0 && E.volumeJeu > 0)
+  ? E.corps * E.volumeJeu * dB(-(D.echelons.texture ?? -8)) : null;
+const enDb = niveau => 20 * Math.log10(niveau / N0);
+const pct = db => Math.max(0, Math.min(100, (db - MIN_DB) / (MAX_DB - MIN_DB) * 100));
+
+document.getElementById("chapeau").innerHTML = N0
+  ? `La barre est le niveau <b>mesuré</b> du son, le trait blanc est la <b>cible</b> de son échelon.
+     Le repère rouge est le <b>pas du personnage</b> — le mètre étalon (asset ${E.id}, volume ${E.volumeJeu}).
+     Un son qui dépasse largement le pas sans être un événement rare est un son qui l'écrasera en jeu.`
+  : `<b>Aucun étalon mesuré</b> : sans lui il n'y a pas d'échelle, seulement des intentions.
+     Lancer <code>audio/banc.lua</code> en Play, puis régénérer avec <code>--mesures</code>.`;
+
+const compte = {};
+for (const s of Object.values(D.sons)) compte[s.etat] = (compte[s.etat]||0)+1;
+document.getElementById("compte").innerHTML = Object.entries(compte)
+  .map(([e,n]) => `<span class="puce"><i style="background:${COUL[e]}"></i>${n} ${MOT[e]}</span>`).join("");
+
+const corps = document.getElementById("corps");
+const dbPas = N0 ? enDb(E.corps * E.volumeJeu) : null;
+
+// Une échelle graduée en tête, puis un bloc par échelon, dans l'ordre du plus
+// discret au plus fort : c'est l'ordre dans lequel on lit un mixage.
+const echelle = document.createElement("div");
+echelle.className = "echelle";
+echelle.innerHTML = `<div></div><div>${
+  [-24,-18,-12,-6,0,6,12].map(v => `<span class="tick" style="left:${pct(v)}%">${v>0?"+":""}${v}</span>`).join("")
+}</div><div></div>`;
+corps.appendChild(echelle);
+
+for (const [ech, db] of Object.entries(D.echelons)) {
+  const lot = Object.entries(D.sons).filter(([,s]) => s.echelon === ech);
+  const h = document.createElement("h2");
+  h.innerHTML = `${ech} <span>cible ${db>0?"+":""}${db} dB — ${lot.length} son(s)</span>`;
+  corps.appendChild(h);
+  if (!lot.length) { corps.insertAdjacentHTML("beforeend", `<div class="vide">aucun son à cet échelon</div>`); continue; }
+
+  for (const [nom, s] of lot) {
+    const mesure = s.mesure && s.mesure.corps > 0 && N0 !== null && s.volume
+      ? enDb(s.mesure.corps * s.volume) : null;
+    const l = document.createElement("div");
+    l.className = "ligne";
+    l.innerHTML = `
+      <div class="nom" title="${nom}">${nom}</div>
+      <div class="piste">
+        ${[-24,-18,-12,-6,0,6,12].map(v => `<span class="grad${v===0?" zero":""}" style="left:${pct(v)}%"></span>`).join("")}
+        ${dbPas!==null ? `<span class="grad pas" style="left:${pct(dbPas)}%" title="le pas du personnage"></span>` : ""}
+        ${mesure!==null ? `<span class="barre" style="left:0;width:${pct(mesure)}%;background:${COUL[s.etat]}"></span>` : ""}
+        ${N0!==null ? `<span class="cible" style="left:${pct(db)}%"></span>` : ""}
+      </div>
+      <div class="val">${
+        !s.ids ? "manquant"
+        : mesure===null ? "non mesuré"
+        : `<b>${Math.round(s.volume*100)} %</b> ${s.ecart!==null&&Math.abs(s.ecart)>D.tolerance ? `(${s.ecart>0?"+":""}${s.ecart} dB)` : ""}`
+      }</div>
+      <div class="fiche">
+        ${s.pourquoi ? `<div>${s.pourquoi}</div>` : ""}
+        ${s.cherche ? `<div style="margin-top:6px">À chercher : <b>${s.cherche}</b></div>` : ""}
+        ${s.declencheurs.length ? `<ul>${s.declencheurs.map(d=>`<li>${d}</li>`).join("")}</ul>` : `<div style="margin-top:6px">Aucun déclencheur — personne ne joue ce son.</div>`}
+        ${s.mesure ? `<div style="margin-top:6px">Mesuré le ${s.mesure.le} — corps ${s.mesure.corps}, crête ${s.mesure.crete}, durée ${s.mesure.duree} s</div>` : ""}
+      </div>`;
+    l.addEventListener("click", () => l.classList.toggle("ouvert"));
+    corps.appendChild(l);
+  }
+}
+</script>
+</body>
+</html>
